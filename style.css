@@ -107,11 +107,11 @@ body {
 }
 
 .title-bar .icon {
-  width: 64px;
-  height: 64px;
+  width: 74px;
+  height: 74px;
   border-radius: 6px;
   margin-right: 12px;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .title-bar .title {
