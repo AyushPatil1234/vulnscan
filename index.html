@@ -8,6 +8,7 @@
         content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.openai.com https://generativelanguage.googleapis.com">
     <title>AI-Powered Web Vulnerability Scanner</title>
     <link rel="stylesheet" href="style.css">
+    <link href="./output.css" rel="stylesheet">
 
 <body>
     <div class="window">
@@ -93,7 +94,17 @@
                 <!-- Scan Results Section -->
                 <div class="results-section">
                     <div class="card">
-                        <h3>Real-time Scan Results</h3>
+                        <div class="flex justify-between items-center">
+                            <h3>Real-time Scan Results</h3>
+                            <div>
+                                <div class="status-bar rounded-md   ">
+                                <div class="status-indicator"></div>
+                                <span id="statusText">AI Security Scanner Ready</span>
+                                
+                            </div>
+                        </div>
+                        </div>
+                        
 
                         <div class="results-area" id="resultsArea">
                             <div id="scanOutput">AI-Powered Scanner Ready
@@ -263,10 +274,6 @@
             <button class="btn" id="importConfig">Import Config</button>
         </div>
 
-        <div class="status-bar">
-            <div class="status-indicator"></div>
-            <span id="statusText">AI Security Scanner Ready</span>
-        </div>
     </div>
 
     <div class="modal-overlay" id="vulnModal">
