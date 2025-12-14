@@ -30,30 +30,30 @@
 
 [data-theme="dark"] {
   /* Dark theme variables */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
+  --bg-primary: #121111;
+  --bg-secondary: #000000;
+  --bg-tertiary: #171717;
   --bg-quaternary: #475569;
-  --bg-accent: #1e293b;
-  --bg-terminal: #020617;
+  --bg-accent: #000000;
+  --bg-terminal: #000000;
 
   --text-primary: #f1f5f9;
   --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
+  --text-tertiary: #9fabbb;
   --text-quaternary: #64748b;
   --text-muted: #64748b;
   --text-terminal: #ef4444;
 
-  --border-primary: #334155;
+  --border-primary: #ffffff1a;
   --border-secondary: #475569;
   --border-tertiary: #334155;
 
-  --accent-color: #ef4444;
+  --accent-color: #adadad;
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
 
-  --hover-color: #334155;
+  --hover-color: #2d2d2d;
   --glass-border: rgba(255, 255, 255, 0.1);
 }
 
@@ -490,7 +490,7 @@ input[type="checkbox"] {
   min-height: 300px;
   font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
   font-size: 13px;
-  border: 1px solid var(--border-secondary);
+  border: 6px solid var(--border-primary);
   overflow-y: auto;
   max-height: 400px;
   transition: all 0.3s ease;
