@@ -217,6 +217,25 @@ body {
   border-bottom-color: var(--accent-color);
 }
 
+.tab::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0.1px;
+  filter: blur(0px);
+  background: var(--accent-color);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.2s ease;
+}
+
+.tab:hover:not(.active)::after {
+  transform: scaleX(1);
+  transform-origin: center;
+}
+
 .tab:hover:not(.active) {
   background: var(--hover-color);
   color: var(--text-primary);
