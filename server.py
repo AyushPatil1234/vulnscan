@@ -10,6 +10,9 @@ import concurrent.futures
 import html as html_lib
 import ipaddress
 import socket
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
@@ -26,9 +29,13 @@ def add_security_headers(response):
 scan_cache = {}
 
 class Crawler:
-    def __init__(self, start_url, max_depth=2):
+    def __init__(self, start_url, max_depth=2, user_agent=None, proxy_url=None, follow_redirects=True, auth=None):
         self.start_url = start_url
         self.max_depth = max_depth
+        self.user_agent = user_agent
+        self.proxy_url = proxy_url
+        self.follow_redirects = follow_redirects
+        self.auth = auth
         self.visited = set()
         self.pages = [] # List of (url, content)
 
@@ -73,17 +80,24 @@ class Crawler:
 
             try:
                 yield {"type": "log", "message": f"Crawling {url} (Depth: {depth})..."}
-                response = requests.get(url, timeout=10)
-                if response.status_code == 200:
-                    self.pages.append((url, response.text))
+                req_headers = {'User-Agent': self.user_agent} if self.user_agent else {}
+                proxies = {'http': self.proxy_url, 'https': self.proxy_url} if self.proxy_url else None
+                response = requests.get(url, timeout=10, headers=req_headers, proxies=proxies, allow_redirects=self.follow_redirects, auth=self.auth, verify=False)
+                
+                self.pages.append((url, response.text))
+                
+                if response.status_code != 200:
+                    yield {"type": "log", "message": f"Warning: {url} returned status {response.status_code}", "level": "warning"}
                     
-                    if depth < self.max_depth:
-                        links = self.extract_links(response.text, url)
-                        for link in links:
-                            # Only crawl same domain
-                            if urlparse(link).netloc == domain and link not in self.visited:
-                                self.visited.add(link)
-                                queue.append((link, depth + 1))
+                if depth < self.max_depth:
+                    links = self.extract_links(response.text, url)
+                    for link in links:
+                        # Only crawl same domain (relax www. check)
+                        link_domain = urlparse(link).netloc.replace('www.', '')
+                        base_domain = domain.replace('www.', '')
+                        if link_domain == base_domain and link not in self.visited:
+                            self.visited.add(link)
+                            queue.append((link, depth + 1))
             except Exception as e:
                 yield {"type": "log", "message": f"Failed to crawl {url}: {str(e)}", "level": "error"}
 
@@ -101,15 +115,21 @@ class Crawler:
         return absolute_links
 
 class HeuristicScanner:
-    def __init__(self):
+    def __init__(self, user_agent=None, proxy_url=None, follow_redirects=True, auth=None):
         self.vulnerabilities = []
+        self.user_agent = user_agent
+        self.proxy_url = proxy_url
+        self.follow_redirects = follow_redirects
+        self.auth = auth
 
     def scan_page(self, url, content):
         vulns = []
         
         # Check 1: Missing Security Headers
         try:
-            r = requests.head(url, timeout=5)
+            req_headers = {'User-Agent': self.user_agent} if self.user_agent else {}
+            proxies = {'http': self.proxy_url, 'https': self.proxy_url} if self.proxy_url else None
+            r = requests.head(url, timeout=5, headers=req_headers, proxies=proxies, allow_redirects=self.follow_redirects, auth=self.auth, verify=False)
             headers = r.headers
             if 'X-Frame-Options' not in headers:
                 vulns.append({
@@ -177,14 +197,22 @@ def scan():
     api_key = data.get('api_key')
     ai_model = data.get('ai_model')
     
+    user_agent = data.get('user_agent', 'Mozilla/5.0 (AI Security Scanner)')
+    proxy_url = data.get('proxy_url')
+    follow_redirects = data.get('follow_redirects', True)
+    
+    auth_tuple = None
+    if data.get('basic_auth') and data.get('username') and data.get('password'):
+        auth_tuple = (data.get('username'), data.get('password'))
+    
     if not target_url:
         return Response("Missing target_url", status=400)
 
     def generate():
         yield json.dumps({"type": "log", "message": "Initializing scan...", "step": "Initializing..."}) + "\n"
         
-        crawler = Crawler(target_url, max_depth=crawl_depth)
-        heuristic_scanner = HeuristicScanner()
+        crawler = Crawler(target_url, max_depth=crawl_depth, user_agent=user_agent, proxy_url=proxy_url, follow_redirects=follow_redirects, auth=auth_tuple)
+        heuristic_scanner = HeuristicScanner(user_agent=user_agent, proxy_url=proxy_url, follow_redirects=follow_redirects, auth=auth_tuple)
         
         total_vulns = []
         pages_scanned = 0
