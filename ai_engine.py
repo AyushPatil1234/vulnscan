@@ -47,14 +47,19 @@ def analyze_page_with_ai(url, content, provider, key, model):
     Analyzes a single page's content using AI to find vulnerabilities.
     """
     prompt = f"""
-    Analyze the following HTML content for security vulnerabilities. 
-    Focus on: XSS, sensitive data exposure, insecure comments, and bad practices.
+    Analyze the following HTML content for security vulnerabilities, categorizing any findings according to the OWASP Top 10 (2021) framework (A01 to A10).
+    Focus specifically on:
+    - XSS and Injection (A03)
+    - Sensitive data exposure / Cryptographic Failures (A02)
+    - Insecure Design patterns or business logic flaws (A04)
+    - Security Misconfiguration (A05) such as insecure comments or leaked internal IPs/paths
+    - Vulnerable Components (A06) like outdated JS libraries visible in script tags
     
     URL: {url}
-    Content Snippet (first 2000 chars):
-    {content[:2000]}
+    Content Snippet (first 4000 chars):
+    {content[:4000]}
     
-    Return a JSON array of objects with keys: name, severity (High/Medium/Low), description, remediation.
+    Return a JSON array of objects with keys: name (Include the OWASP category, e.g., 'A03: XSS in Search Form'), severity (High/Medium/Low), description, remediation.
     If no vulnerabilities are found, return an empty array [].
     Do not include any markdown formatting, just the raw JSON.
     """
@@ -67,6 +72,27 @@ def analyze_page_with_ai(url, content, provider, key, model):
             return json.loads(response)
         except:
             pass
+    return []
+
+def generate_fuzzing_payloads_with_ai(parameter_name, provider, key, model):
+    """
+    Asks the AI to generate contextual, malicious fuzzing payloads for a specific parameter.
+    """
+    prompt = f"""
+    You are an advanced penetration testing engine.
+    Generate a JSON array of 3 highly effective fuzzing payloads (strings) specifically tailored to try and exploit a URL parameter named '{parameter_name}'.
+    Consider SQLi, XSS, and Command Injection variations that might bypass primitive WAFs given the parameter's likely context.
+    Return ONLY a raw JSON array of strings, no markdown.
+    Example output: ["' OR 1=1--", "1; DROP TABLE users", "<script>alert(1)</script>"]
+    """
+    response = call_ai_api(provider, key, model, prompt)
+    if response:
+        response = response.replace('```json', '').replace('```', '').strip()
+        try:
+            return json.loads(response)
+        except:
+            pass
+    # Return empty list if AI fails so the scanner can fallback to local payloads
     return []
 
 def generate_detailed_content(vulns, report_type, provider=None, key=None, model=None):

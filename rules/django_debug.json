@@ -1,0 +1,13 @@
+{
+    "id": "django-debug-mode",
+    "name": "A05: Security Misconfiguration - Django Debug Mode Enabled",
+    "severity": "Medium",
+    "match_type": "regex",
+    "patterns": [
+        "Django\\s+Page\\s+not\\s+found",
+        "DEBUG\\s*=\\s*True",
+        "DEBUG_MODE_ENABLED"
+    ],
+    "description": "The application appears to be running a Django server with DEBUG=True in production, or a similar debug mode, exposing internal tracebacks.",
+    "remediation": "Set DEBUG=False in your production settings.py file and configure allowed hosts properly."
+}

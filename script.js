@@ -201,6 +201,9 @@ async function startScan() {
     const userAgent = document.getElementById('userAgent').value;
     const enableJS = document.getElementById('enableJS').checked;
     const followRedirects = document.getElementById('followRedirects').checked;
+    const activeScan = document.getElementById('activeScan').checked;
+    const deepJsScan = document.getElementById('deepJsScan').checked;
+    const stealthMode = document.getElementById('stealthMode').checked;
 
     if (!targetUrl) {
         alert('Please enter a target URL to begin scanning');
@@ -256,7 +259,10 @@ async function startScan() {
                 proxy_url: proxyUrl,
                 user_agent: userAgent,
                 enable_js: enableJS,
-                follow_redirects: followRedirects
+                follow_redirects: followRedirects,
+                active_scan: activeScan,
+                deep_js_scan: deepJsScan,
+                stealth_mode: stealthMode
             }),
             signal: abortController.signal
         });
@@ -602,6 +608,9 @@ document.getElementById('exportConfig').addEventListener('click', () => {
         userAgent: document.getElementById('userAgent').value,
         enableJS: document.getElementById('enableJS').checked,
         followRedirects: document.getElementById('followRedirects').checked,
+        activeScan: document.getElementById('activeScan').checked,
+        deepJsScan: document.getElementById('deepJsScan').checked,
+        stealthMode: document.getElementById('stealthMode').checked,
         basicAuth: document.getElementById('basicAuth').checked,
         formAuth: document.getElementById('formAuth').checked,
         cookieAuth: document.getElementById('cookieAuth').checked
@@ -636,6 +645,9 @@ document.getElementById('importConfig').addEventListener('click', () => {
                     document.getElementById('userAgent').value = config.userAgent || 'Mozilla/5.0 (AI Security Scanner)';
                     document.getElementById('enableJS').checked = config.enableJS || false;
                     document.getElementById('followRedirects').checked = config.followRedirects || false;
+                    document.getElementById('activeScan').checked = config.activeScan || false;
+                    if(document.getElementById('deepJsScan')) document.getElementById('deepJsScan').checked = config.deepJsScan || false;
+                    if(document.getElementById('stealthMode')) document.getElementById('stealthMode').checked = config.stealthMode !== undefined ? config.stealthMode : true;
                     document.getElementById('basicAuth').checked = config.basicAuth || false;
                     document.getElementById('formAuth').checked = config.formAuth || false;
                     document.getElementById('cookieAuth').checked = config.cookieAuth || false;

@@ -1,0 +1,13 @@
+{
+    "id": "exposed-env-file",
+    "name": "A05: Security Misconfiguration - Exposed Environment File",
+    "severity": "High",
+    "match_type": "regex",
+    "patterns": [
+        "DB_PASSWORD\\s*=",
+        "AWS_ACCESS_KEY_ID\\s*=",
+        "SECRET_KEY\\s*="
+    ],
+    "description": "The page contains key-value pairs typical of an exposed environment (.env) file, likely leaking sensitive credentials.",
+    "remediation": "Ensure your web server configuration denies access to dotfiles (like .env) and store configuration outside the web root."
+}

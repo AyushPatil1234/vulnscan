@@ -1,0 +1,10 @@
+; id
+| id
+& id
+`id`
+$(id)
+; cat /etc/passwd
+| cat /etc/passwd
+& cat /etc/passwd
+; ping -c 3 127.0.0.1
+| ping -c 3 127.0.0.1

@@ -11,6 +11,8 @@ import html as html_lib
 import ipaddress
 import socket
 import urllib3
+import random
+import os
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -28,16 +30,27 @@ def add_security_headers(response):
 # Simple in-memory cache to avoid re-scanning same URLs in short time
 scan_cache = {}
 
+# OOB vulnerability tracking
+oob_findings = {}
+
+
 class Crawler:
-    def __init__(self, start_url, max_depth=2, user_agent=None, proxy_url=None, follow_redirects=True, auth=None):
+    def __init__(self, start_url, max_depth=2, user_agent=None, proxy_url=None, follow_redirects=True, auth=None, deep_js_scan=False, stealth_mode=True):
         self.start_url = start_url
         self.max_depth = max_depth
         self.user_agent = user_agent
         self.proxy_url = proxy_url
         self.follow_redirects = follow_redirects
         self.auth = auth
+        self.deep_js_scan = deep_js_scan
+        self.stealth_mode = stealth_mode
         self.visited = set()
         self.pages = [] # List of (url, content)
+        self.user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15",
+            "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0"
+        ]
 
     def is_safe_url(self, url):
         try:
@@ -80,8 +93,14 @@ class Crawler:
 
             try:
                 yield {"type": "log", "message": f"Crawling {url} (Depth: {depth})..."}
-                req_headers = {'User-Agent': self.user_agent} if self.user_agent else {}
+                
+                current_ua = random.choice(self.user_agents) if self.stealth_mode else self.user_agent
+                req_headers = {'User-Agent': current_ua} if current_ua else {}
                 proxies = {'http': self.proxy_url, 'https': self.proxy_url} if self.proxy_url else None
+                
+                if self.stealth_mode:
+                    time.sleep(random.uniform(0.5, 1.2))
+                    
                 response = requests.get(url, timeout=10, headers=req_headers, proxies=proxies, allow_redirects=self.follow_redirects, auth=self.auth, verify=False)
                 
                 self.pages.append((url, response.text))
@@ -112,6 +131,28 @@ class Crawler:
             if link.startswith(('#', 'javascript:', 'mailto:')):
                 continue
             absolute_links.append(urljoin(base_url, link))
+            
+        if self.deep_js_scan:
+            script_srcs = re.findall(r'<script\s+[^>]*src=["\'](.*?)["\']', html, re.IGNORECASE)
+            for src in script_srcs:
+               js_url = urljoin(base_url, src)
+               if js_url not in self.visited:
+                   self.visited.add(js_url)
+                   try:
+                       current_ua = random.choice(self.user_agents) if self.stealth_mode else self.user_agent
+                       req_headers = {'User-Agent': current_ua} if current_ua else {}
+                       if self.stealth_mode:
+                           time.sleep(random.uniform(0.1, 0.5))
+                       js_res = requests.get(js_url, timeout=5, headers=req_headers, verify=False)
+                       if js_res.status_code == 200:
+                           self.pages.append((js_url, js_res.text))
+                           # Extremely naive API endpoint fetch from minified JS
+                           endpoints = re.findall(r'["\']((?:/api/|/v1/|/users/)[a-zA-Z0-9_\-\/]+)["\']', js_res.text)
+                           for ep in endpoints:
+                               absolute_links.append(urljoin(base_url, ep))
+                   except:
+                       pass
+                       
         return absolute_links
 
 class HeuristicScanner:
@@ -145,6 +186,20 @@ class HeuristicScanner:
                     "description": "Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross-Site Scripting (XSS).",
                     "remediation": "Implement a Content Security Policy (CSP) by adding the 'Content-Security-Policy' HTTP header.\n\nStart with a restrictive policy and loosen it as needed:\nContent-Security-Policy: default-src 'self';"
                 })
+            if 'Strict-Transport-Security' not in headers and url.startswith('https://'):
+                vulns.append({
+                    "name": "A02: Missing Strict-Transport-Security (HSTS)",
+                    "severity": "Medium",
+                    "description": "The page is loaded over HTTPS but lacks the HSTS header, leaving it vulnerable to downgrade attacks.",
+                    "remediation": "Add the 'Strict-Transport-Security' header to enforce HTTPS."
+                })
+            if 'Server' in headers or 'X-Powered-By' in headers:
+                vulns.append({
+                    "name": "A05: Security Misconfiguration - Target IP/Framework Leakage",
+                    "severity": "Low",
+                    "description": "Server or X-Powered-By headers are exposed, revealing backend technology versions.",
+                    "remediation": "Configure the web server to hide the Server signature and remove X-Powered-By headers."
+                })
         except:
             pass
 
@@ -176,13 +231,164 @@ class HeuristicScanner:
                 "remediation": "Include a unique, unpredictable CSRF token in all state-changing forms. Verify this token on the server side before processing the request."
             })
 
+        # Check 5: A08 Software and Data Integrity Failures
+        script_tags = re.findall(r'<script\s+[^>]*src=[\'"]([^\'"]+)[\'"][^>]*>', content, re.IGNORECASE)
+        for script in script_tags:
+            # Check if it's an external script and if the tag has integrity attribute
+            if (script.startswith('http') or script.startswith('//')) and 'integrity=' not in content:
+                 vulns.append({
+                    "name": "A08: Software and Data Integrity Failures",
+                    "severity": "Medium",
+                    "description": f"External script {script} is loaded without Subresource Integrity (SRI).",
+                    "remediation": "Add 'integrity' and 'crossorigin' attributes to external script tags to ensure they haven't been tampered with."
+                })
+                 break # Only flag once per page to avoid spam
+
+        # Check 6: A06 Vulnerable and Outdated Components (Naive)
+        if 'jquery-1.' in content or 'jquery-2.' in content:
+            vulns.append({
+                "name": "A06: Vulnerable Components (Outdated jQuery)",
+                "severity": "Medium",
+                "description": "Potential inclusion of an outdated, vulnerable version of jQuery (1.x or 2.x).",
+                "remediation": "Update jQuery to the latest secure version (3.x)."
+            })
+
+        # Check 7: Deep Secrets Extraction (Tokens, Keys)
+        secrets = {
+            "AWS Access Key": r"(AKIA[0-9A-Z]{16})",
+            "JWT Token": r"(eyJ[a-zA-Z0-9-_]+\.eyJ[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+)",
+            "Stripe Key": r"(sk_live_[0-9a-zA-Z]{24})",
+            "Generic Bearer Token": r"(Bearer\s+[a-zA-Z0-9\-_]+)"
+        }
+        for secret_name, pattern in secrets.items():
+            matches = re.finditer(pattern, content)
+            for match in matches:
+                vulns.append({
+                    "name": f"A02/A06: Sensitive Data Exposure - {secret_name}",
+                    "severity": "High",
+                    "description": f"Potential {secret_name} found in the page content/source. Fragment: {match.group(0)[:15]}...",
+                    "remediation": "Revoke the exposed key immediately and remove it from frontend code or repositories."
+                })
+
+        # Check 8: Custom Template Rules
+        rules_dir = os.path.join(os.path.dirname(__file__), 'rules')
+        if os.path.exists(rules_dir):
+            for rule_file in os.listdir(rules_dir):
+                if rule_file.endswith('.json'):
+                    try:
+                        with open(os.path.join(rules_dir, rule_file), 'r') as fp:
+                            rule = json.load(fp)
+                            if rule.get('match_type') == 'regex':
+                                for pattern in rule.get('patterns', []):
+                                    if re.search(pattern, content):
+                                        vulns.append({
+                                            "name": rule.get('name', 'Custom Template Match'),
+                                            "severity": rule.get('severity', 'Medium'),
+                                            "description": rule.get('description', f'Matched custom rule: {rule.get("id")}'),
+                                            "remediation": rule.get('remediation', 'Review custom template guidelines.')
+                                        })
+                                        break # flag once per rule
+                    except Exception as e:
+                        pass
+                        
         return vulns
 
-from ai_engine import call_ai_api, analyze_page_with_ai, generate_detailed_content
+from ai_engine import call_ai_api, analyze_page_with_ai, generate_detailed_content, generate_fuzzing_payloads_with_ai
 
-# ... (Crawler and HeuristicScanner classes remain the same) ...
+class ActiveScanner:
+    def __init__(self, user_agent=None, proxy_url=None, follow_redirects=True, auth=None, ai_provider=None, api_key=None, ai_model=None):
+        self.user_agent = user_agent
+        self.proxy_url = proxy_url
+        self.follow_redirects = follow_redirects
+        self.auth = auth
+        self.ai_provider = ai_provider
+        self.api_key = api_key
+        self.ai_model = ai_model
+        
+    @staticmethod
+    def get_static_payloads():
+        payloads = []
+        payload_dir = os.path.join(os.path.dirname(__file__), 'payloads')
+        if os.path.exists(payload_dir):
+            for file_name in ['sqli.txt', 'xss.txt', 'cmdi.txt']:
+                file_path = os.path.join(payload_dir, file_name)
+                if os.path.exists(file_path):
+                    try:
+                        with open(file_path, 'r') as fp:
+                            content = fp.read()
+                            payloads.extend([line.strip() for line in content.splitlines() if line.strip()])
+                    except:
+                        pass
+        if not payloads:
+            payloads = ["<script>alert('XSS')</script>", "' OR '1'='1"]
+        return payloads
 
-# ... (Crawler and HeuristicScanner classes remain the same) ...
+    def scan_url(self, url):
+        vulns = []
+        if '?' not in url:
+             return vulns
+             
+        parsed = urlparse(url)
+        params = parsed.query.split('&')
+        param_names = [p.split('=')[0] for p in params if '=' in p]
+             
+        try:
+             req_headers = {'User-Agent': self.user_agent} if self.user_agent else {}
+             proxies = {'http': self.proxy_url, 'https': self.proxy_url} if self.proxy_url else None
+
+             for param in param_names:
+                 # Generate AI contextual payloads for this parameter
+                 payloads = []
+                 if self.api_key:
+                     payloads = generate_fuzzing_payloads_with_ai(param, self.ai_provider, self.api_key, self.ai_model)
+                 if not payloads:
+                     payloads = self.get_static_payloads()
+                     
+                 for payload in payloads:
+                     test_url = url.replace(f"{param}=", f"{param}={payload}")
+                     r = requests.get(test_url, timeout=5, headers=req_headers, proxies=proxies, allow_redirects=self.follow_redirects, auth=self.auth, verify=False)
+                     
+                     if payload in r.text and "<script" in payload.lower():
+                          vulns.append({
+                              "name": f"A03: Injection (AI Reflected XSS on '{param}')",
+                              "severity": "High",
+                              "description": f"URL parameter '{param}' reflected unsanitized AI payload: {payload}",
+                              "remediation": "Sanitize and HTML-encode all user input before reflecting it."
+                          })
+                          
+                     if "syntax error" in r.text.lower() or "mysql" in r.text.lower() or r.status_code == 500:
+                          if "script" not in payload.lower():
+                              vulns.append({
+                                  "name": f"A03: Injection (AI Potential SQLi on '{param}')",
+                                  "severity": "High",
+                                  "description": f"Error detected when injecting AI payload into '{param}': {payload}",
+                                  "remediation": "Use parameterized queries to prevent SQL injection."
+                              })
+                  
+                 # A10 / OOB Blind Injection check
+                 oob_id = f"oob_{int(time.time())}_{param}"
+                 oob_payload = f"http://127.0.0.1:5000/callback/{oob_id}"
+                 test_url_oob = url.replace(f"{param}=", f"{param}={oob_payload}")
+                 requests.get(test_url_oob, timeout=2, headers=req_headers, proxies=proxies, allow_redirects=self.follow_redirects, auth=self.auth, verify=False)
+                 
+                 # Brief sleep to allow async webhook ping
+                 time.sleep(0.5)
+                 if oob_findings.get(oob_id):
+                     vulns.append({
+                         "name": f"A10: Server-Side Request Forgery (Confirmed on '{param}')",
+                         "severity": "High",
+                         "description": f"Parameter '{param}' triggered a verified out-of-band request back to the scanner.",
+                         "remediation": "Validate all user-supplied URLs against an allowlist of permitted domains."
+                     })
+                 
+        except:
+             pass
+        return vulns
+
+@app.route('/callback/<vuln_id>')
+def oob_callback(vuln_id):
+    oob_findings[vuln_id] = True
+    return Response("OK", status=200)
 
 @app.route('/')
 def index():
@@ -207,11 +413,15 @@ def scan():
     
     if not target_url:
         return Response("Missing target_url", status=400)
+        
+    active_scan = data.get('active_scan', False)
+    deep_js_scan = data.get('deep_js_scan', False)
+    stealth_mode = data.get('stealth_mode', True)
 
     def generate():
         yield json.dumps({"type": "log", "message": "Initializing scan...", "step": "Initializing..."}) + "\n"
         
-        crawler = Crawler(target_url, max_depth=crawl_depth, user_agent=user_agent, proxy_url=proxy_url, follow_redirects=follow_redirects, auth=auth_tuple)
+        crawler = Crawler(target_url, max_depth=crawl_depth, user_agent=user_agent, proxy_url=proxy_url, follow_redirects=follow_redirects, auth=auth_tuple, deep_js_scan=deep_js_scan, stealth_mode=stealth_mode)
         heuristic_scanner = HeuristicScanner(user_agent=user_agent, proxy_url=proxy_url, follow_redirects=follow_redirects, auth=auth_tuple)
         
         total_vulns = []
@@ -244,6 +454,17 @@ def scan():
                     if v not in total_vulns:
                         total_vulns.append(v)
                         yield json.dumps({"type": "vulnerability", **v}) + "\n"
+
+            # Active Scan
+            if active_scan:
+                yield json.dumps({"type": "log", "message": "Starting active AI-driven fuzzing and OOB testing...", "step": "Active Scanning..."}) + "\n"
+                active_scanner = ActiveScanner(user_agent=user_agent, proxy_url=proxy_url, follow_redirects=follow_redirects, auth=auth_tuple, ai_provider=ai_provider, api_key=api_key, ai_model=ai_model)
+                for url, content in crawler.pages:
+                    a_vulns = active_scanner.scan_url(url)
+                    for v in a_vulns:
+                        if v not in total_vulns:
+                            total_vulns.append(v)
+                            yield json.dumps({"type": "vulnerability", **v}) + "\n"
 
             # AI Parallel Scan
             if api_key:
